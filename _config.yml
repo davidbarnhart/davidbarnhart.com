@@ -21,7 +21,7 @@
 title: David's Website
 email: david at davidbarnhart.com
 description: >- # this means to ignore newlines until "baseurl:"
-  I had too many Notepad++ tabs filled with miscellaneous notes
+  I had way too many Notepad++ tabs filled with miscellaneous notes
   and other small pieces of code that I was working though,
   so I decided to make a website where I could store them instead.
 baseurl: "" # the subpath of your site, e.g. /blog
