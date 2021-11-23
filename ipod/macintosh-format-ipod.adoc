@@ -87,7 +87,7 @@ Partition number: 1
 New name of partition: "partition map"
 ```
 
-9. Print your partition map by typing ```n```. Your first partition should look like this:
+9. Print your partition map by typing ```p```. Your first partition should look like this:
 +
 ```sh
 Command (? for help): p
@@ -138,7 +138,7 @@ Device block size=512, Number of Blocks=125059072 (59.6G)
 DeviceType=0x0, DeviceId=0x0
 ```
 
-12. Once there are only three partitions (with the 3rd one being type “Apple_Free”, create the last partition. Type ```C```, then ```65599```, then ```p```, then ```disk```, then ```Apple_HFS```. Print your partition table again and it should look something like this (the size of the third partition will vary):
+12. Once there are only three partitions (with the 3rd one being type “Apple_Free”, create the last partition. Type ```C```, then ```65599```, then ```3p```, then ```disk```, then ```Apple_HFS```. Print your partition table again and it should look something like this (the size of the third partition will vary):
 +
 ```
 Command (? for help): C
@@ -188,7 +188,7 @@ this command ```sudo newfs_hfs -v ipod /dev/disk3s3```. Make sure you select the
 19. Now write the iPod firmware to the “Apple_MDFW” partition (which is partition 2). In this example, my firmware file is "Firmware-1.1.5". If you are using a different firmware version, the file listed after ```if=``` will be different than mine.
 +
 ```sh
-sudo dd if=Firmware-1.1.5 of=/dev/disk3s2”
+sudo dd if=Firmware-1.1.5 of=/dev/disk3s2
 ```
 +
 Once again, make sure you’ve got the right number after the word “disk”. The number after the letter “s” ought to be 2. If in doubt, run ```diskutil list``` again and find the partition of your iPod drive that is of type “Apple_MDFW”.
