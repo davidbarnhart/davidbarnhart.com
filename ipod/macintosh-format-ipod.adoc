@@ -1,0 +1,196 @@
+Creating a "Macintosh" Formatted iPod Drive
+-------------------------------------------
+
+Background
+~~~~~~~~~~
+
+This info is for people that are trying to replace the original hard disk in their iPod for a flash memory card. One of the persistently difficult things about this mod is getting the iPod to successfully boot up with the new drive.
+
+After a lot of trial and error (emphasis on the error), I decided to figure out the most basic step-by-step process for preparing a new card for an iPod. Part of the motivation was that other guides had me grabbing a 10 GB or 20 GB partition image and restoring it to my flash card. 
+
+While the original iPod drives were in 5, 10, 20, 30 GB increments, most flash cards are going to be 32, 64, or 128 GB. Restoring a 20 GB partition on a 32 GB card seemed like I'd be losing out on about 12 GB of potential storage. This lead me to want to figure out how to prep the cards without relying on partition images and stuff.
+
+I first worked out how to create a Windows/FAT32 drive. Since the FAT32 file system has widespread support, you can do this on a Mac, Windows or Linux PC. At some point, however, I decided I wanted to make a Macintosh-formatted iPod. I had a first generation iPod that I was modding, and originally the only iPods were the Macintosh-formatted ones. So it seemed sort of appropriate.
+
+One final word: you will need to have the firmware file for your generation of iPod. Each generation has its own firmware version. The firmware is what lets the iPod actually start up and run. You can format the flash card perfectly, but if you leave the firmware out, it's like trying to boot your computer from a blank drive. The firmware is the iPod's operating system. As you'll see, it lives on its own partition, separate from the music files.
+
+I don't have any firmware files available here. In the past I've grabbed them from https://www.felixbruns.de/iPod/firmware/
+
+Instructions
+~~~~~~~~~~~~
+
+1. First run ```diskutil list``` from Terminal to get an idea of your existing disks. If you just have a single drive in your Mac, you'll get something like this:
++
+```sh
+mini2011:~ david$ diskutil list
+/dev/disk0 (internal, physical):
+   #:                       TYPE NAME                    SIZE       IDENTIFIER
+   0:      GUID_partition_scheme                        *500.1 GB   disk0
+   1:                        EFI EFI                     209.7 MB   disk0s1
+   2:                 Apple_APFS Container disk1         499.9 GB   disk0s2
+
+mini2011:~ david$
+```
+
+2. Insert flash card into Mac.
+
+3. Run ```diskutil list``` again. Note the new disk that wasn’t present in step 1. This will be in the form of “/dev/diskX” where X is a number. In my example, I’m using /dev/disk3.
+
+4. We’ll use the ```pdisk``` command-line utility to get the flash card's partitions set up. But before pdisk will operate on the card, we’ll need to format it with an “Apple Partition Map”. Do this by running
++
+```sh
+sudo diskutil partitionDisk /dev/disk3 APM %Apple_HFS% disk R
+```
++
+This does a basic partitioning operation on the card. However, it also configures the drive to use Apple Partition Map (versus the more common MBR or GPT partition maps). Windows-formatted iPods use MBR. We have to configure the drive to use Apple Partition Map before we can use the ```pdisk``` utility in the next steps.
+
+5. Launch pdisk with ```sudo pdisk /dev/disk3```
++ You'll see something like this: 
++
+```sh
+Mini2011:~ david$ sudo pdisk /dev/disk3
+Edit /dev/disk3 -
+Command (? for help):
+```
+
+6. Type ```p``` to view the current partition map:
++
+```sh
+Command (? for help): p
+
+Partition map (with 512 byte blocks) on '/dev/disk3'
+
+#:                type name      length   base     ( size )
+1: Apple_partition_map Apple         63 @ 1       
+2:          Apple_Free           262144 @ 64       (128.0M)
+3:           Apple_HFS        124796848 @ 262208   ( 59.5G)
+4:          Apple_Free               16 @125059056
+
+Device block size=512, Number of Blocks=125059072 (59.6G)
+DeviceType=0x0, DeviceId=0x0
+```
+
+7. First we need to change the size of the first partition from 63 blocks to 62. Type ```s``` and hit Return. Then ```62``` and hit Return.
++
+```sh
+Command (? for help): s
+
+New size: 62
+```
+
+8. We’ll also rename the first partition. Type ```n```, then ```1```, then ```"partition map"``` (include the double quotes):
++
+```
+Command (? for help): n      
+Partition number: 1
+
+New name of partition: "partition map"
+```
+
+9. Print your partition map by typing ```n```. Your first partition should look like this:
++
+```sh
+Command (? for help): p
+
+Partition map (with 512 byte blocks) on '/dev/disk3'
+
+#:                type name            length    base      ( size )
+1: Apple_partition_map partition map        62 @ 1
+2:          Apple_Free Extra            262145 @ 63        (128.0M)
+3:           Apple_HFS               124796848 @ 262208    ( 59.5G)
+4:          Apple_Free                      16 @ 125059056
+
+Device block size=512, Number of Blocks=125059072 (59.6G)
+DeviceType=0x0, DeviceId=0x0
+```
+
+10. Now we’ll create the partition that will hold the iPod firmware. Type ```C``` (uppercase), then ```63```, then ```65536```, then ```firmware```, and finally ```Apple_MDFW```. Print your partition table again, and your second partition should now look like this:
++
+```sh
+Command (? for help): p
+
+Partition map (with 512 byte blocks) on '/dev/disk3'
+
+#:                type name            length   base      ( size )
+1: Apple_partition_map partition map        62 @ 1
+2:          Apple_MDFW firmware          65536 @ 63       ( 32.0M)
+3:          Apple_Free Extra            196609 @ 65599    ( 96.0M)
+4:           Apple_HFS               124796848 @ 262208   ( 59.5G)
+5:          Apple_Free                      16 @ 125059056
+
+Device block size=512, Number of Blocks=125059072 (59.6G)
+DeviceType=0x0, DeviceId=0x0
+```
+
+11. Now we’ll do some cleanup. You may have some extra partitions that are marked with the type “Apple_Free”, like in my example above. If you do, you’ll want to delete any of the other partitions like the “Apple_HFS” one. To do this, type ```d```, type Return, and then type the partition number to delete:
++
+```
+Command (? for help): d
+Partition number: 4
+Command (? for help): p
+Partition map (with 512 byte blocks) on '/dev/disk3'
+#:                type name            length   base      ( size )
+1: Apple_partition_map partition map        62 @ 1
+2:          Apple_MDFW firmware          65536 @ 63       ( 32.0M)
+3:          Apple_Free Extra         124993473 @ 65599    ( 59.6G)
+
+Device block size=512, Number of Blocks=125059072 (59.6G)
+DeviceType=0x0, DeviceId=0x0
+```
+
+12. Once there are only three partitions (with the 3rd one being type “Apple_Free”, create the last partition. Type ```C```, then ```65599```, then ```p```, then ```disk```, then ```Apple_HFS```. Print your partition table again and it should look something like this (the size of the third partition will vary):
++
+```
+Command (? for help): C
+First block: 65599
+Length in blocks: 3p
+Name of partition: disk
+Type of partition: Apple_HFS
+Command (? for help): p
+Partition map (with 512 byte blocks) on '/dev/disk3'
+#:                type name            length   base      ( size )
+1: Apple_partition_map partition map        62 @ 1
+2:          Apple_MDFW firmware          65536 @ 63       ( 32.0M)
+3:           Apple_HFS disk          124993473 @ 65599    ( 59.6G)
+
+Device block size=512, Number of Blocks=125059072 (59.6G)
+DeviceType=0x0, DeviceId=0x0
+```
+
+13. To save all the changes, type ```w``` and then answer ```y```.
++
+```
+Command (? for help): w
+Writing the map destroys what was there before. Is that okay? [n/y]: y
+The partition table has been altered!
+```
+
+14. Finally, exit the “pdisk” utility by typing ```q```.
+
+15. If you type ```diskutil list```, your card should now look something like this:
++
+```sh
+/dev/disk3 (external, physical):
+   #:                       TYPE NAME                   SIZE       IDENTIFIER
+   0:     Apple_partition_scheme                       *64.0 GB    disk3
+   1:        Apple_partition_map                        31.7 KB    disk3s1
+   2:                 Apple_MDFW                        33.6 MB    disk3s2
+   3:                  Apple_HFS                        64.0 GB    disk3s3
+```
+
+16. The Apple_HFS partition needs to be formatted. Do it with
+this command ```sudo newfs_hfs -v ipod /dev/disk3s3```. Make sure you select the right number after the word "disk". As for the number after the letter “s”, it ought to be partition (or “slice” in Mac OS/BSD terminology) 3. If for some reason your Apple_HFS partition is a different partition number, then make sure that number is after the letter “s”.
+
+17. Now time to deal with the firmware. I’ve downloaded the firmware from this site in the past: https://www.felixbruns.de/iPod/firmware/. In the event that the site stops maintaining a library of firmware, try doing a search for “1G/2G (1/1.5)” (include the double quotes). This string is sufficiently unique that it pulled up a few other sites with the firmware.
+
+18. If your firmware file has an “ipsw” extension, then you actually need to take one extra step. This is a compressed file, but it's easy to uncompress. Rename the extension to “zip”, then unzip the file. Inside should be the actual firmware file (which likely won’t have any extension) along with a “manifest.plist” file.
+
+19. Now write the iPod firmware to the “Apple_MDFW” partition (which is partition 2). In this example, my firmware file is "Firmware-1.1.5". If you are using a different firmware version, the file listed after ```if=``` will be different than mine.
++
+```sh
+sudo dd if=Firmware-1.1.5 of=/dev/disk3s2”
+```
++
+Once again, make sure you’ve got the right number after the word “disk”. The number after the letter “s” ought to be 2. If in doubt, run ```diskutil list``` again and find the partition of your iPod drive that is of type “Apple_MDFW”.
+
+20. You're done! Put the card in the iPod and try to boot it up. If all is successful, it will start up, albeit without any music. Next you can connect your iPod to iTunes to start transferring some music onto it.
