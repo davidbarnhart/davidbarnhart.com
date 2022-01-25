@@ -22,4 +22,4 @@ jobs:
         - name: upload to davidbarnhart.com
           run: |
              sudo apt-get install rsync
-             rsync -avz -e "ssh -i ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" index.html david@davidbarnhart.com:~/
+             rsync --exclude '*.adoc' -avz -e "ssh -i ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" index.html david@davidbarnhart.com:/data/davidbarnhart.com/www/
