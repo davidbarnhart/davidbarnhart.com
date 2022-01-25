@@ -11,6 +11,15 @@ jobs:
         - name: convert to html
           run: |
              sudo apt-get install asciidoctor
-             ls
+             asciidoctor -R . -D . '**/*.adoc'
+
+	- name: set up ssh key
+	  run: |
+             echo '${{ secrets.DAVIDBARNHART_COM_SSH_PUBLIC }}' > ssh_key
+             chmod 600 ssh_key
+             
+	- name: upload to davidbarnhart.com
+          run: |
+             scp index.html david@davidbarnhart.com:~/
        
 
