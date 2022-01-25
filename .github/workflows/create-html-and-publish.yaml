@@ -17,6 +17,7 @@ jobs:
           run: |
              echo '${{ secrets.DAVIDBARNHART_COM_SSH_PUBLIC }}' > ssh_key
              chmod 600 ssh_key
+             ls -laht
              
         - name: upload to davidbarnhart.com
           run: |
