@@ -20,4 +20,4 @@ jobs:
              
         - name: upload to davidbarnhart.com
           run: |
-             rsync -avz -e "ssh -i ssh_key -o ScriptHostKeyChecking=no -o UserKnownHostsFile=/dev/null" index.html david@davidbarnhart.com:~/
+             rsync -avz -e "ssh -i ssh_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" index.html david@davidbarnhart.com:~/
