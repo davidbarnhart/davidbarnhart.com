@@ -3,10 +3,14 @@ on: [push]
 
 jobs:
    create-html:
-      name: Create html from adoc files
       runs-on: ubuntu-latest
       steps:
-        - name: run asciidoctor
+        - name: checkout code
+          uses: actions/checkout@v2
+
+        - name: convert to html
           run: |
-             echo 'hello'
+             sudo apt-get install asciidoctor
+             ls
+       
 
