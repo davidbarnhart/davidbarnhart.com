@@ -6,7 +6,7 @@ Background
 
 This info is for people that are trying to replace the original hard disk in their iPod for a flash memory card. One of the persistently difficult things about this mod is getting the iPod to successfully boot up with the new drive.
 
-After a lot of trial and error (emphasis on the error), I decided to figure out the most basic step-by-step process for preparing a new card for an iPod. Part of the motivation was that other guides had me grabbing a 10 GB or 20 GB partition image and restoring it to my flash card. 
+After a lot of trial and error (emphasis on the error), I decided to figure out the most basic step-by-step process for preparing a new card for an iPod. Part of the motivation was that other guides had me grabbing a 10 GB or 20 GB partition image and restoring it to my flash card. Note: the following is a really helpful post for preparing a Windows/FAT iPod using Linux. This post helped me to realize that it was possible to get an iPod drive formatted properly without ever touching iTunes: https://ubuntuforums.org/showthread.php?t=1263715
 
 While the original iPod drives were in 5, 10, 20, 30 GB increments, most flash cards are going to be 32, 64, or 128 GB. Restoring a 20 GB partition on a 32 GB card seemed like I'd be losing out on about 12 GB of potential storage. This lead me to want to figure out how to prep the cards without relying on partition images and stuff.
 
