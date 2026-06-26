@@ -486,15 +486,43 @@ udev rule, but portable, and it works where macOS won&#8217;t mount anything.</p
 <p><strong>Use flash storage that supports DMA</strong> (many cards do), <strong>and</strong></p>
 </li>
 <li>
-<p><strong>Either set a udev rule on Linux to throttle the FireWire tr
+<p><strong>Either set a udev rule on Linux to throttle the FireWire transfers, or use a
 raw-access tool like flashpod</strong> to talk to it on the iPod&#8217;s terms.</p>
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<p>flashpod
+<sub>~</sub><sub>~</sub></p>
+</div>
+<div class="paragraph">
+<p>I wrote <strong>flashpod</strong> to solve several problems. First, it&#8217;s a single place to take a
+flash card and fully image it for an iPod. We do the partitioning, write the
+firmware, create the empty iTunes database, load the card up with songs,
+everything. You just pop the card in an iPod and IT JUST WORKS.</p>
+</div>
+<div class="paragraph">
+<p>But flashpod is also a tool to manage the iPod. It&#8217;s a simple interface for
+letting you see what is on the iPod, removing albums/artists, and adding music.</p>
+</div>
+<div class="paragraph">
+<p>Because flashpod controls the sync process, I was able to tweak the transfer
+settings and have flashpod talk to the first gen iPods at a more raw level than
+what OS mounting of the partition allows. This was the breakthrough that makes
+FireWire sync with flash modded 1st and 2nd gen iPods (assuming they were modded
+with flash that supports DMA). So flashpod is absolutely necessary for managing a
+flash modded 1/2 gen iPod.</p>
+</div>
+<div class="paragraph">
+<p>For third gen, the case is more complicated. Third gen uses USB to sync and
+flash modded ones have been able to sync fine without resorting to the special
+throttling that we had to do for FireWire iPods. But flashpod is still a handy
+tool for managing music on even third and fourth gen iPods.</p>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-06-26 23:11:28 UTC
+Last updated 2026-06-26 23:21:45 UTC
 </div>
 </div>
 </body>
