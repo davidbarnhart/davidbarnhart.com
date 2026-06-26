@@ -496,33 +496,18 @@ raw-access tool like flashpod</strong> to talk to it on the iPod&#8217;s terms.<
 <sub>~</sub><sub>~</sub></p>
 </div>
 <div class="paragraph">
-<p>I wrote <strong>flashpod</strong> to solve several problems. First, it&#8217;s a single place to take a
-flash card and fully image it for an iPod. We do the partitioning, write the
-firmware, create the empty iTunes database, load the card up with songs,
-everything. You just pop the card in an iPod and IT JUST WORKS.</p>
+<p>I wrote <strong>flashpod</strong> to handle the whole process of putting flash cards in early-generation iPods. It&#8217;s a command-line tool that works without iTunes — it writes the firmware to the card, creates the music database, and loads music. Once the card is in the iPod, flashpod also manages the library, letting you add and remove songs directly on the device.</p>
 </div>
 <div class="paragraph">
-<p>But flashpod is also a tool to manage the iPod. It&#8217;s a simple interface for
-letting you see what is on the iPod, removing albums/artists, and adding music.</p>
+<p>flashpod works with generations 1, 2, and 3 (and likely 4). It runs on Linux and macOS, and was deliberately written to work on vintage hardware like an old MacBook with FireWire.</p>
 </div>
 <div class="paragraph">
-<p>Because flashpod controls the sync process, I was able to tweak the transfer
-settings and have flashpod talk to the first gen iPods at a more raw level than
-what OS mounting of the partition allows. This was the breakthrough that makes
-FireWire sync with flash modded 1st and 2nd gen iPods (assuming they were modded
-with flash that supports DMA). So flashpod is absolutely necessary for managing a
-flash modded 1/2 gen iPod.</p>
-</div>
-<div class="paragraph">
-<p>For third gen, the case is more complicated. Third gen uses USB to sync and
-flash modded ones have been able to sync fine without resorting to the special
-throttling that we had to do for FireWire iPods. But flashpod is still a handy
-tool for managing music on even third and fourth gen iPods.</p>
+<p>For 1st and 2nd gen iPods, flashpod is essential. It reads and writes the iPod&#8217;s partition directly over the raw device, bypassing the OS mount entirely. This lets it work around the FireWire bridge limitations that prevent macOS or modern Linux from mounting a flash-modded iPod. For 3rd and 4th gen iPods, flashpod is still useful for managing music, even though they sync over USB and don&#8217;t need the raw access workaround.</p>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-06-26 23:21:45 UTC
+Last updated 2026-06-26 23:37:35 UTC
 </div>
 </div>
 </body>
