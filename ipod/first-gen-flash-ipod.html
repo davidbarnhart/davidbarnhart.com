@@ -1,0 +1,54 @@
+<html>
+<body style="font-family: verdana; max-width: 800px; margin: 0 auto;">
+  <h1>Flash Storage for 1st/2nd-Gen iPods</h1>
+  
+  <p>
+  Years ago I experimented with putting flash cards in 1st-gen iPods and had
+  partial success. Through some now-forgotten series of almost magical
+  incantations, I prepared a CompactFlash card with the 1st-gen firmware on it — I
+  think it involved prepping the card on a <em>3rd</em>-gen iPod, loading songs that way,
+  then updating the firmware down to 1st-gen. Crazy process, but it proved the
+  point: a 1st-gen iPod <em>will</em> accept a flash card and play music off it.
+  </p>
+  <p>
+  There was an Achilles' heel, though: it <em>couldn't sync over FireWire.</em> Nobody
+  quite knew why. Theories abounded. I set it aside for years, then recently picked
+  it back up — and after a lot of experimentation, I'm back to report that
+  1st/2nd-gen iPods <em>can</em> sync over FireWire with flash, given <em>two conditions</em>:
+  </p>
+  <ol>
+  <li><em>The card has to support DMA mode.</em> Some flash cards do, some don't. This is
+  the half nobody had isolated. The iPod's disk-mode reads/writes go through ATA
+  DMA, and a card that doesn't honor the DMA handshake hangs the transfer cold.
+  Luckily, plenty of cards do support DMA.
+  </li>
+  <li><em>The host computer has to slow down.</em> The 1st-gen FireWire bridge is fragile
+  about transfer size and command pipelining, and every OS's <em>default</em> settings
+  blow right through those limits. On Linux you can fix this with OS-level tweaks
+  (a udev rule capping <code>max_sectors_kb</code>, killing read-ahead, and forcing queue
+  depth 1) — and then the iPod's data partition (music + the "iTunes" database)
+  mounts and is fully readable/writable. macOS, unfortunately, doesn't expose those
+  knobs; a flash-converted iPod isn't even recognized with default settings.
+  </li>
+  </ol>
+  <p>
+  But you don't have to use the defaults. I wrote a utility called <em>flashpod</em> that
+  reads and writes the iPod while bypassing as much of the OS as possible — talking
+  to the FireWire device as a <em>raw block device</em> with no buffering or caching, so
+  it controls the exact size and timing of every read and write. Same idea as the
+  udev rule, but portable, and it works where macOS won't mount anything.
+  </p>
+  <p>
+  So the recipe for a <em>usable</em> flash-converted 1st/2nd-gen iPod:
+  </p>
+  <ul>
+  <li><em>Use flash storage that supports DMA</em> (many cards do), <em>and</em>
+  </li>
+  <li><em>Either set a udev rule on Linux to throttle the FireWire transfers, or use a
+  raw-access tool like flashpod</em> to talk to it on the iPod's terms.
+  </li>
+  </ul>
+  
+  <p><a href="/">Back to home</a></p>
+</body>
+</html>
