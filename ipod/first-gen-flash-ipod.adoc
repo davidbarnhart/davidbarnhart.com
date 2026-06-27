@@ -42,3 +42,5 @@ I wrote *flashpod* to handle the whole process of putting flash cards in early-g
 flashpod works with generations 1, 2, and 3 (and likely 4). It runs on Linux and macOS, and was deliberately written to work on vintage hardware like an old MacBook with FireWire.
 
 For 1st and 2nd gen iPods, flashpod is essential. It reads and writes the iPod's partition directly over the raw device, bypassing the OS mount entirely. This lets it work around the FireWire bridge limitations that prevent macOS or modern Linux from mounting a flash-modded iPod. For 3rd and 4th gen iPods, flashpod is still useful for managing music, even though they sync over USB and don't need the raw access workaround.
+
+You can find flashpod on GitHub: https://github.com/davidbarnhart/flashpod
