@@ -1,8 +1,8 @@
-Creating a "Macintosh" Formatted iPod Drive
--------------------------------------------
+= Creating a "Macintosh" Formatted iPod Drive
 
-Background
-~~~~~~~~~~
+_Originally published 2021-11-23. Revised 2022-01-25._
+
+== Background
 
 This info is for people that are trying to replace the original hard disk in their iPod for a flash memory card. One of the persistently difficult things about this mod is getting the iPod to successfully boot up with the new drive.
 
@@ -16,8 +16,7 @@ One final word: you will need to have the firmware file for your generation of i
 
 I don't have any firmware files available here. In the past I've grabbed them from https://www.felixbruns.de/iPod/firmware/
 
-Instructions
-~~~~~~~~~~~~
+== Instructions
 
 1. First run ```diskutil list``` from Terminal to get an idea of your existing disks. If you just have a single drive in your Mac, you'll get something like this:
 +

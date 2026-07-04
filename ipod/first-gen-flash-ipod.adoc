@@ -1,3 +1,7 @@
+= Flash Storage for 1st/2nd-Gen iPods
+
+_Originally published 2026-06-26._
+
 Years ago I experimented with putting flash cards in 1st-gen iPods and had
 partial success. Through some now-forgotten series of almost magical
 incantations, I prepared a CompactFlash card with the 1st-gen firmware on it — I
@@ -34,8 +38,7 @@ So the recipe for a _usable_ flash-converted 1st/2nd-gen iPod:
 * *Either set a udev rule on Linux to throttle the FireWire transfers, or use a
 raw-access tool like flashpod* to talk to it on the iPod's terms.
 
-flashpod
-~~~~~~
+== flashpod
 
 I wrote *flashpod* to handle the whole process of putting flash cards in early-generation iPods. It's a command-line tool that works without iTunes — it writes the firmware to the card, creates the music database, and loads music. Once the card is in the iPod, flashpod also manages the library, letting you add and remove songs directly on the device.
 
