@@ -86,9 +86,10 @@ We'll get into the details on each component below, but first let's zoom out so 
 don't miss the forest for the trees. Here's the whole stack on one page:
 
 ....
-  Desktop browser (at home) ────────────────┐
-                                            ├──▶ Open WebUI ──▶ llama-swap ──▶ llama.cpp ──▶ model
-  Phone + Conduit (away) ──▶ Tailscale ─────┘
+  Desktop browser (at home) ─────────────┐
+                                         ├──▶ Open WebUI ──▶ llama-swap ──┐
+  Phone + Conduit (away) ──▶ Tailscale ──┘                                │
+                      model ◀── llama.cpp ◀───────────────────────────────┘
 ....
 
 Everything from Open WebUI rightward is self-hosted on hardware I own; only the
