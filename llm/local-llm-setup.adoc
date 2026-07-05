@@ -1,0 +1,715 @@
+= Self-Hosting My Own LLMs
+
+_Originally published 2026-07-05._
+
+At the beginning of 2026 I decided I wanted to self-host all the software that
+would give me a "ChatGPT"-like experience, but fully under my own control and
+ownership. I had a few reasons. Some were the usual ones — privacy and total
+ownership of my own data. Some were pure curiosity: LLMs seemed like something
+approaching black magic, and I wanted to look behind the curtain. And some were about
+self-sufficiency — what happens if OpenAI or Anthropic decide to start being less
+generous with their technology? This post explains the tools I eventually settled
+on, and how I configured them in a way that suited my needs.
+
+== The Big Why
+
+At a time when ChatGPT, Claude, Gemini and plenty of others are being handed to
+users for free, why go to the time and expense of recreating something that's
+admittedly inferior? I'll go through a few reasons, but the main one comes down to
+data sovereignty. I wanted full ownership and control over my own data. Full stop.
+
+I know I'm an outlier here. But it's the same reason I still pay — in 2026, even! —
+for an email service instead of relying on Gmail. Throughout 2025 I found myself
+having more and more conversations across ChatGPT, Claude and other services, and I
+realized those conversations were deeply personal and valuable to me, even when I
+wasn't chatting about anything especially private. I wanted to be able to look back
+and easily find a conversation I'd had months (or eventually years) earlier. I know
+ChatGPT, Claude and Gemini all offer that kind of history — but I'd grown uncomfortable
+with the idea that I was building up a library of my own conversations inside someone
+else's walled garden. Technically, they own that data, and therefore my conversations.
+I felt very little agency over something that felt like it should be entirely mine.
+So it was settled: I would use open-source tools to host my own chat interface —
+and if at all possible, power it with large language models running on my own
+machine.
+
+There were other reasons, too. I like tinkering, and I wanted to see how the LLM
+sausage gets made. Chatting with ChatGPT online felt mysterious and hard for me to
+fathom — how did this new technology actually work? There's no better way to learn
+than to set it up locally and watch all the moving parts.
+
+Lastly, there's the self-sufficiency angle. We've already seen powerful
+closed-source models kept behind tightening restrictions and steep prices —
+Anthropic's Mythos and Fable, OpenAI's GPT-5.6. And even when the models aren't
+formally restricted, plenty of people swear up and down that the big providers
+quietly throttle them at busy times. Whether that's actually true is more or less
+unknowable — but there's an antidote either way: use open-weights models that
+aren't so directly under any one company's control. A local model, running on my
+own hardware, is something that neither the government nor big business can so
+easily restrict or take away.
+
+== The Cost
+
+Before I begin, I should give some context about the sort of hardware I have.
+It's 2026, and hardware — memory especially — is suddenly expensive, because
+we're in the thick of a generative-AI bubble. People are paying scalper's prices
+for the hardware that lets you run models locally. Pretending this is all doable
+without dropping a modest amount of money would be disingenuous. So what am I
+running, and what did it cost?
+
+I'm running what most people would call an enthusiast's setup: some decent
+hardware, but nowhere close to a high-end build. I started this with a custom AMD
+desktop I built right before COVID, paired with a video card I picked up last
+year. In 2026 it's not remotely cutting edge, and that's fine.
+
+I built it around AMD's Ryzen 9 5900X — a 12-core beast at the time — and loaded
+it up with about 80 GB of DDR4. I really wish I'd bought more memory back when it
+was cheap a couple of years ago, but so does everyone else. Even so, this is a
+very solid (if not cutting-edge) machine.
+
+Last summer I walked into Micro Center and walked out with a refurbished NVIDIA
+RTX 3090 Ti for $850 plus tax. I remember wondering at the time whether it was a
+dumb purchase. I'm now sleeping very easy with that acquisition — it turned out to
+be a great buy. The 3090 Ti and its 24 GB of VRAM do the majority of the heavy
+lifting in my system, and that 24 GB is the single most important number in this
+whole story: it decides which models fit, and shapes nearly every configuration
+choice I make later on. Luckily I'd already put a largish 850-watt power supply in
+the machine, so I didn't need to upgrade that either.
+
+So how much would this setup cost to assemble today? Maybe $2–3k. Perhaps $4k,
+given the inflated price of everything right now. But that's still a long way from
+the many, many thousands people are paying for Mac Studios decked out with enough
+RAM to run the big models.
+
+== Basic Architecture
+
+We'll get into the details on each component below, but first let's zoom out so we
+don't miss the forest for the trees. Here's the whole stack on one page:
+
+....
+  Desktop browser (at home) ────────────────┐
+                                            ├──▶ Open WebUI ──▶ llama-swap ──▶ llama.cpp ──▶ model
+  Phone + Conduit (away) ──▶ Tailscale ─────┘
+....
+
+Everything from Open WebUI rightward is self-hosted on hardware I own; only the
+phone's traffic takes the Tailscale detour to get in. (As we'll see, Open WebUI and
+the inference server don't even have to live on the same machine.)
+
+My AMD desktop runs Linux. Which distribution probably doesn't matter much — I'm on a
+Debian variant at the moment, though I might redo the whole setup on Fedora one of
+these days (like I said, I like to tinker). This guide assumes a Linux environment.
+
+A quick note on the GPU: I actually got things running first on a small 8 GB AMD
+Radeon card I already had, before the NVIDIA. It's certainly possible to use a GPU
+from someone other than NVIDIA, but I struggled a bit getting the AMD card
+working — non-NVIDIA cards are still something of a second-class citizen in the
+local-LLM world. What tripped me up more, though, was that card's meager 8 GB of
+VRAM, which is ultimately what pushed me to jump to the 3090 Ti.
+
+So what does the stack actually need? Besides the open-weights models themselves,
+you need something to perform _inference_ — the act of taking incoming text (my
+chat prompts) and running it through the model to produce a text response. There
+are several options here, and I landed on llama.cpp. It's not as hardcore as vLLM,
+but it's a little more "enterprise" than something like Ollama or LM Studio.
+
+By design, though, llama.cpp doesn't hand you a nice web interface for actually
+chatting with the model. For that you need a chat front-end. There are many
+(LibreChat, Oobabooga and SillyTavern all came up while I was looking), but I
+settled on Open WebUI. A big reason was that I could reach my Open WebUI server
+from my phone — an important detail for me. I wanted the whole setup to be usable
+from both my desktop and my phone while I'm on the go, and at the time Open WebUI
+had the most viable options for use on my iPhone. (Incidentally, I ended up using
+an iOS app called "Conduit" to reach my Open WebUI server from the phone — though
+the app ecosystem is always shifting.)
+
+With Open WebUI out front and llama.cpp doing the inference, I was nearly in
+business. My remaining problem was picking which open-weights model to run — there
+were actually several intriguing candidates, and I wanted to switch between them
+easily. Trouble is, changing models would normally mean restarting llama.cpp, and
+that's not something I can do from my phone.
+
+That's where llama-swap comes in. It acts like a little local router that sits
+between Open WebUI and my llama.cpp inference server, and it lets me expose a
+handful of different models at once. I pick a model from inside the Open WebUI chat
+window and just start talking; llama-swap works with llama.cpp to spin up inference
+on the right model automatically. No stopping and starting services from the
+command line. It just works.
+
+Lastly, there's the small matter of reaching all this while I'm out and about. To
+keep things simple, I took the plunge with Tailscale, which lets you build a
+personal mesh VPN. I run Tailscale on both my home server and my phone, so when I'm away
+from home I just make sure I'm connected to my Tailscale network (my "tailnet") and
+the Conduit app on my phone can reach my Open WebUI server as if I were sitting at
+home.
+
+== To Docker or Not to Docker
+
+I started out by following a few online guides for installing llama.cpp on Linux,
+and I initially decided to run everything from pre-built Docker containers — it
+seemed like the cleaner solution, easier to isolate and configure. At first I had
+separate containers for Open WebUI and llama-swap (whose image also bundled the
+llama.cpp `llama-server` binary), and I later added a third for Redis.
+
+Over time, though, I drifted away from containers. The main reason was that I
+needed to stop using the pre-built images and start running my own custom binaries.
+For a while I baked those custom binaries into a custom Docker image, but eventually
+that started to feel like too much work.
+
+The Open WebUI container was the first to go — though it didn't disappear so much as
+move. I have a second machine in the house, some sort of Dell OptiPlex, that I use
+as a souped-up NAS running FreeBSD. It's a rock-solid server, unlike my AMD desktop,
+which was constantly crashing while I figured out how to safely load these enormous
+models onto the 3090 Ti. The 3090 Ti had to stay in the desktop — which dictated
+where llama.cpp would run — but Open WebUI could technically live anywhere. So I
+moved it into a jail on the FreeBSD box for the sake of stability.
+
+That move quietly solved a problem I'd been papering over. Back during all the
+crashing and rebooting, every restart of the Open WebUI service logged my clients out
+and forced them to re-authenticate immediately — which got old fast. Redis was my fix:
+it let logins persist across service restarts. But once Open WebUI lived on the
+rock-solid FreeBSD box, it hardly ever restarted. My inference machine still hiccups
+and goes down now and then, but that no longer takes Open WebUI down with it. So I
+just... forgot about Redis. I never installed it on the FreeBSD box, and it drifted
+out of the picture entirely.
+
+That left just one container with llama.cpp and llama-swap in it. For llama.cpp, I kept
+finding myself wanting the absolute latest version. When Google released the Gemma 4
+models, I downloaded one right away and tried to use it — and got errors, because my
+version of llama.cpp didn't fully recognize the new model. The fix was to run a
+newer llama.cpp, but as long as I was using someone's pre-built Docker image I was at the
+update mercy of whoever built it. I wanted to be able to pull the latest llama.cpp
+source, build it myself, and run that. You can do that with Docker, of course — but
+at some point I decided it was simpler to stop using Docker and just run the
+binaries directly on Linux. I also wanted to run a slightly modified build of
+llama-swap (more on that later), and once I was building my own llama-swap binary
+anyway, wrapping it in a container felt like a pointless extra step.
+
+So today none of this stack runs in Docker. It's a little simpler for me to manage.
+Was Docker bad, or slow? Not at all — this really just comes down to preference.
+
+== Inference engine: llama.cpp
+
+There are several options for serving up the raw language-model files. If you want
+a GUI and a gentler experience, LM Studio has been around for years and is a great
+option. But I wanted something that ran from the command line as a service or
+daemon. Ollama fits that bill, but I kept seeing it described as "llama.cpp with
+training wheels" — and in that case, I figured, why not just use llama.cpp itself? I
+also briefly checked out vLLM, but my particular use case — where I'm the sole user
+of my local stack — didn't really play to its strengths (vLLM shines when you're
+serving lots of concurrent users). llama.cpp turned out to be the sweet spot: a
+robust headless inference server, with "prosumer" touches like being able to offload
+layers of a too-big model onto the CPU — at the cost of speed — when VRAM gets
+tight.
+
+Like I said earlier, I started out running whatever version of llama.cpp happened to
+ship inside my pre-built llama-swap container. But I wanted to track the very latest
+release: pull it from GitHub, build it, and run that. That's ultimately what drove
+me off Docker and onto binaries installed directly on my Linux system.
+
+The build itself is refreshingly simple. After cloning the repo once, keeping it
+current and reinstalling looks something like this:
+
+----
+cd llama.cpp
+git pull
+mkdir -p build && cd build
+cmake .. -DGGML_CUDA=ON
+make -j4 # had to lower this on my machine to avoid a segfault that was likely caused by nvcc running out of RAM
+sudo make install
+----
+
+The `-DGGML_CUDA=ON` flag is what builds in NVIDIA CUDA support. The final
+`sudo make install` drops
+the freshly built `llama-server` into `/usr/local/bin`, where the rest of my setup
+expects to find it.
+
+Going native did give me some heartburn the one time I also tried to run llama.cpp
+on my AMD card. An AMD card needs llama.cpp built against AMD's ROCm stack rather
+than NVIDIA's CUDA, so I suddenly had two different builds to juggle — one
+CUDA-compatible, one ROCm-compatible. I managed it by renaming binaries, which
+worked but felt gross; this is exactly the kind of situation where a Docker
+container would have been the cleaner approach. In the end, though, I just let the
+AMD card quietly fade out of my setup. It was only an 8 GB card, after all.
+
+== llama-swap
+
+If I'd wanted to just pick one model and stick with it, my life would have been a
+little simpler. Instead, I wanted to start a chat with one model and then, in the
+very next session, switch to a different local model. That requires restarting
+llama.cpp (pointed at the new model each time). Rather than do that by hand,
+there's a way to have software restart llama.cpp on my behalf: llama-swap.
+
+llama-swap is a proxy that sits in front of llama.cpp. Requests hit llama-swap
+first, and it looks at which model was requested. If llama.cpp is already running
+that model, llama-swap just passes the messages along and llama.cpp infers away. But
+if the request is for a different model, llama-swap does the dirty work: it stops
+llama.cpp and restarts it with the newly requested model. There's a 10–15 second
+wait while llama.cpp reloads, but after that it's back to inferring away.
+
+llama-swap looks like pretty simple software, so why did I want to run a custom
+version of it? My problem was that, early on, llama.cpp was often crashing on me —
+usually because I'd given it incorrect model settings. Unfortunately, when llama.cpp
+crashed, llama-swap would essentially swallow the error, and I'd never see anything
+useful in my chat window. So I wrote a small patch to fix exactly that. It took a
+little fiddling, but I eventually got it working.
+
+At first I was going to post a diff of my patch, but while preparing it for this post I
+noticed that the patch no longer works for the latest version of llama-swap. I'm in the
+process of trying to get a revised patch merged into the llama-swap project itself, so
+fussing over this may soon no longer be needed. Here is the basic idea behind the
+patch:
+
+llama-swap already captures the upstream process's output (both stdout and stderr) into
+a log buffer. My change hooks the point where llama-swap gives up on a model that exited
+before it ever became ready: instead of returning a generic "the process exited"
+message, it pulls that captured output and folds it into the error it hands back. So the
+client sees the model's actual complaint — a rejected flag, an out-of-memory abort,
+whatever it was — rather than a shrug. The one wrinkle is that the log buffer accumulates
+across attempts, so I also clear it at the start of each launch; a repeated failure then
+shows only the latest attempt's output instead of stacking duplicate copies.
+
+For llama-swap to know which models it can offer up, it needs a configuration file.
+That file is essentially a collection of `llama-server` startup commands — one for
+each model you want to make available. Want to run a model with a 128k-token context
+instead of 64k? Configure that here. Want to run a model half on the GPU and half on
+the system CPU? That goes here too. Basically any setting that controls how
+llama.cpp gets launched lives in the llama-swap config file.
+
+So what does mine look like? This isn't the whole thing, but it'll give you the
+idea. (And no, I don't really know whether these settings are truly optimal — I've
+just tinkered with them until each model runs okay on my machine.)
+
+----
+# llama-swap configuration
+listen: "0.0.0.0:9292"
+healthCheckTimeout: 120
+logToStdout: "both"
+sendLoadingState: true
+
+models:
+  qwen3.6-35b-IQ4:
+    cmd: >
+      llama-server
+      --model /ryzenstore/models/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf
+      --port ${PORT}
+      --host 0.0.0.0
+      --n-gpu-layers 99
+      --flash-attn on
+      --ctx-size 262144
+      --cache-type-k q4_0
+      --cache-type-v q4_0
+      --batch-size 512
+      --ubatch-size 512
+      --threads 8
+      --no-mmap
+
+  qwen3.6-27b-Q5:
+    cmd: >
+      llama-server
+      --model /ryzenstore/models/Qwen3.6-27B-Q5_K_M.gguf
+      --threads-batch 8
+      --port ${PORT}
+      --host 0.0.0.0
+      --ctx-size 262144
+      --spec-type draft-mtp
+      --spec-draft-n-max 2
+      -ngl 99
+      -fa on
+      -ctk q8_0
+      -ctv q8_0
+      -nkvo
+
+  gemma-4-31b-Q4:
+    cmd: >
+      llama-server
+      --model /ryzenstore/models/gemma-4-31B-it-Q4_K_M.gguf
+      --port ${PORT}
+      --host 0.0.0.0
+      --n-gpu-layers 99
+      --flash-attn on
+      --reasoning off
+      --batch-size 512
+      --ctx-size 128000
+      --cache-type-k q4_0
+      --cache-type-v q4_0
+----
+
+You'll notice each command uses `${PORT}` rather than a hard-coded port number.
+llama-swap fills that in when it launches the model, so it stays in control of the
+wiring between itself and llama.cpp.
+
+== The chat front-end: Open WebUI
+
+Everything up to this point has been plumbing. Open WebUI is the part I actually
+look at — the ChatGPT-style chat window in my browser and on my phone. As I
+mentioned earlier, it's the one piece of the stack that doesn't run on my AMD
+desktop; it lives over on the FreeBSD NAS instead.
+
+There's a small irony here. Open WebUI is really designed to be run as a Docker
+container — that's the blessed, easy path. And I run it about as far from that path
+as you can get: natively, inside a FreeBSD jail, on top of an emulated Linux. It was
+more work, but it fits how I wanted the rest of the house organized, and it's been
+rock solid.
+
+The jail itself is a plain FreeBSD 13.5 jail, created with iocage. The one
+non-obvious wrinkle is that Open WebUI can't run on FreeBSD directly, so the jail
+has FreeBSD's Linux compatibility turned on — which is what all the `linprocfs` and
+`linsysfs` permissions here are for:
+
+----
+iocage create -n openwebui -r 13.5-RELEASE \
+  ip4_addr="em0|openwebui-ip/24" \
+  defaultrouter="gateway-ip" \
+  boot=on \
+  enforce_statfs=1 \
+  allow_mount=1 \
+  allow_mount_linprocfs=1 \
+  allow_mount_linsysfs=1 \
+  allow_raw_sockets=1
+----
+
+Getting Open WebUI running inside the jail was the fussiest part of this whole
+project. My first instinct was to install it on FreeBSD's own Python — and that went
+badly. Every time I ran `pip install open-webui` it would grind for a while and then
+die on some missing build dependency, so I'd install that piece — Rust, then cmake,
+then OpenSSL, then libffi, then a Postgres client library — rerun pip, and hit the
+next one. After a couple of hours of whack-a-mole I gave up on the native path
+entirely.
+
+The fix was to stop fighting FreeBSD and lean on its Linux compatibility instead. I
+installed a Rocky Linux 9 base (`linux_base-rl9`) and mounted the Linux `proc` and
+`sys` filesystems that Linux programs expect to find. Then, rather than build a
+Python myself, I downloaded a prebuilt standalone Linux build of CPython 3.11 (from
+the https://github.com/astral-sh/python-build-standalone[python-build-standalone]
+project) and unpacked it into `/opt/python`. Pointed at `pip install open-webui` — where ready-made Linux wheels actually exist —
+that Linux Python installed it cleanly. The whole saga is exactly the kind of thing the official Docker image
+exists to spare you, which is a little ironic given that leaving Docker behind is
+what put me here in the first place.
+
+One gotcha worth passing along: those Linux `proc`/`sys` mounts have to survive a
+jail restart, or the Linux Python quietly stops working the next time the machine
+reboots. I made them permanent by adding the mount to the jail's fstab from the
+host:
+
+----
+iocage fstab -a openwebui "linprocfs /compat/linux/proc linprocfs rw 0 0"
+----
+
+To keep it running, I wrote a small rc.d service so the jail starts Open WebUI on
+boot. Under the hood it just runs `open-webui serve` on port 8080, wrapped in
+FreeBSD's `daemon` for a pidfile and a log. One environment variable in there is
+worth calling out:
+
+----
+AIOHTTP_CLIENT_TIMEOUT=600
+----
+
+That's a ten-minute client timeout. With a hosted service, responses come back fast;
+with a big model running on a single 3090 Ti, a long answer can genuinely take
+minutes, and the default timeout would hang up on the model mid-sentence. Bumping it
+to 600 seconds fixed that.
+
+The first thing to do once you can reach Open WebUI in a browser is to point it at
+the models. Open WebUI talks to inference backends through an OpenAI-compatible API, so in
+its admin settings I set up a Connection to my local inference server at
+`http://inference-server-ip:9292/v1`. That's llama-swap over on the ryzen desktop —
+from Open WebUI's point of view it's just another OpenAI-compatible endpoint, and behind
+that address llama-swap and llama.cpp do all the swapping and inferring we set up
+earlier.
+
+=== Web search
+
+One thing I really wanted was for my local models to be able to search the web, the
+way the hosted assistants do. Open WebUI supports this out of the box if you give it
+a search backend, and the self-hosted option is SearXNG — a metasearch engine that
+queries the big search engines on your behalf and hands back the results, without
+the tracking.
+
+SearXNG got its own jail, also on the FreeBSD box, right next to Open WebUI. Unlike the
+Open WebUI jail, this one is completely stock — SearXNG is pure Python and runs on
+FreeBSD natively, so there's no Linux layer and none of the extra permissions:
+
+----
+iocage create -n searxng -r 13.5-RELEASE \
+  ip4_addr="em0|searxng-ip/24" \
+  boot=on
+----
+
+Installing SearXNG inside the jail was refreshingly boring — especially next to the
+Open WebUI saga. Because it's plain Python with no exotic dependencies, it's
+available as a native FreeBSD package, so the whole install came down to
+`pkg install py311-searxng-devel` and enabling its service. No Linux base, no
+standalone Python, no wheels compiled from source.
+
+.Implement this: setting up SearXNG in the jail
+[%collapsible]
+====
+[source,sh]
+----
+# inside the jail (iocage console searxng)
+pkg install -y py311-searxng-devel
+
+# generate a secret key to paste into the config
+openssl rand -hex 32
+
+# edit /usr/local/etc/searxng.yml:
+#   - set server.secret_key to the value above
+#   - add "json" to search.formats (see below) so Open WebUI can read results
+vi /usr/local/etc/searxng.yml
+
+# enable and start the service (it listens on port 8888)
+sysrc searxng_enable=YES
+service searxng start
+sockstat -l4 | grep 8888   # confirm it's listening
+----
+
+The one setting that isn't optional: by default SearXNG only returns HTML, but Open
+WebUI needs *JSON* back, so `search.formats` in `searxng.yml` has to include it:
+
+[source,yaml]
+----
+search:
+  formats:
+    - html
+    - json
+----
+====
+
+Then, in Open WebUI's admin settings, I pointed web search at that jail:
+
+----
+http://searxng-ip:8888/search?q=<query>
+----
+
+Now when I ask a local model about something current, Open WebUI runs the search
+through SearXNG, feeds the results into the model's context, and I get an answer
+grounded in today's web instead of the model's training cutoff.
+
+=== Appendix: recreating the jail from scratch
+
+If you'd like to reproduce this exact setup, here's the whole thing start to finish,
+with all my false starts stripped out. It assumes a FreeBSD host with iocage.
+
+*1. On the FreeBSD host — create the jail:*
+
+----
+iocage create -n openwebui -r 13.5-RELEASE \
+  ip4_addr="em0|openwebui-ip/24" \
+  defaultrouter="gateway-ip" \
+  boot=on \
+  enforce_statfs=1 \
+  allow_mount=1 \
+  allow_mount_linprocfs=1 \
+  allow_mount_linsysfs=1 \
+  allow_raw_sockets=1
+
+iocage start openwebui
+----
+
+*2. Inside the jail — the Linux base and the filesystems it needs:*
+
+----
+iocage console openwebui
+
+# Rocky Linux 9 userland: the linuxulator compatibility layer
+pkg install -y linux_base-rl9
+
+# Linux binaries expect /proc and /sys; create and mount them
+mkdir -p /compat/linux/proc /compat/linux/sys
+mount -t linprocfs linprocfs /compat/linux/proc
+mount -t linsysfs  linsysfs  /compat/linux/sys
+----
+
+*3. Back on the host — make those mounts survive a reboot:*
+
+----
+iocage fstab -a openwebui "linprocfs /compat/linux/proc linprocfs rw 0 0"
+iocage fstab -a openwebui "linsysfs  /compat/linux/sys  linsysfs  rw 0 0"
+----
+
+*4. Inside the jail — a self-contained Linux Python, then Open WebUI.* No FreeBSD
+Python, Node, or build toolchain required; a standalone Linux CPython plus prebuilt
+Linux wheels does it all:
+
+----
+fetch -o /tmp/python.tar.gz \
+  https://github.com/astral-sh/python-build-standalone/releases/download/20240726/cpython-3.11.9+20240726-x86_64-unknown-linux-gnu-install_only.tar.gz
+
+mkdir -p /opt/python
+tar xzf /tmp/python.tar.gz -C /opt/python --strip-components=1
+
+/opt/python/bin/pip3 install open-webui
+----
+
+*5. Inside the jail — the rc.d service.* Save this as `/usr/local/etc/rc.d/openwebui`:
+
+----
+#!/bin/sh
+#
+# PROVIDE: openwebui
+# REQUIRE: NETWORKING
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="openwebui"
+rcvar="openwebui_enable"
+pidfile="/var/run/${name}.pid"
+logfile="/var/log/${name}.log"
+procname="/opt/python/bin/python3.11"
+
+command="/usr/sbin/daemon"
+command_args="-f -p ${pidfile} -o ${logfile} /usr/bin/env DATA_DIR=/app/backend/data AIOHTTP_CLIENT_TIMEOUT=600 AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST=10 /opt/python/bin/open-webui serve --host 0.0.0.0 --port 8080"
+
+load_rc_config $name
+: ${openwebui_enable:="NO"}
+
+run_rc_command "$1"
+----
+
+Then enable and start it:
+
+----
+chmod +x /usr/local/etc/rc.d/openwebui
+sysrc openwebui_enable="YES"
+service openwebui start
+----
+
+Open WebUI is now live on `http://openwebui-ip:8080`. The last step is in its web
+admin panel: add an OpenAI-compatible connection pointed at
+`http://inference-server-ip:9292/v1` (llama-swap on ryzen), and set the SearXNG search URL
+to `http://searxng-ip:8888/search?q=<query>`.
+
+== Models
+
+Models are both the fun part and the excruciating part. When I was brand new to
+hosting a local LLM, the sheer array of open-weights models was disorienting. Where
+do you even start? This is an area that changes every few months, so anything I write
+here will start going stale almost immediately. Still, a few guiding principles have
+stuck with me.
+
+The big one: good models are great, but newer models are probably better. Models are
+advancing fast right now. If DeepSeek figures out some novel feature or setting, it
+will likely get studied and reproduced in everyone else's next wave of models. When I
+first went looking I searched for "model rankings" and kept reading posts that said things
+like "Microsoft's Phi-4 punches above its weight." That's wonderful — but the Phi-4 family
+came out in late 2024, and I was assessing the landscape in late 2025, so a lot had changed.
+Great as models like Phi-4 were when they came out, too much has moved since to stay dogmatically
+attached to one model like that. So as new models come out, keep your old model files
+handy, but embrace and test the new ones. They're probably better — and on the off
+chance they aren't, well, you still have the old files. That's the whole strength of
+running open-weights models: they're in my possession, and I can upgrade (or not!) at
+will. Just since I started, Google dropped its Gemma 4 family, which has been great,
+and the Qwen models keep coming.
+
+Other open-weights models get released too, but sometimes they're simply too big for
+me to run — which brings up size. Figure out your VRAM situation, then pick models
+that fit it. With 24 GB of VRAM I have a good sense of what I can run and what's
+simply out of reach: I want model files in the neighborhood of 15–20 GB, which leaves
+some GPU memory left over for context (the running size of the conversation). That
+lands me squarely on models in the 25–35 billion parameter range. These are very
+strong — capable of genuinely impressive results. Honestly, chatting with a good 30B
+model isn't that different from using OpenAI's or Anthropic's latest flagships; those
+are almost certainly far larger, but a typical chat session won't really showcase the
+gap. Even dropping into the low teens of billions is a good experience, and smaller
+models fit more completely inside the GPU, so responses come back snappy.
+
+There are bigger models out there, of course. Some intriguing ~70-billion-parameter
+models exist, but I can't come close to running them usefully. And it's generally
+believed the true state-of-the-art models live well above that — 200B, 300B, 600B,
+maybe a trillion or more. None of those are remotely runnable on my machine, even with extreme
+quantization. So I've made peace with sticking to models around 30 billion parameters
+and under.
+
+Some astute readers might remember that my original motivation for all this was _data
+sovereignty_. The pull of running local models on my mighty 3090 Ti was strong — but
+stronger still was the itch to run the absolute latest, most capable models. I knew
+I'd never own the hardware for that, so I briefly considered a service like RunPod,
+which rents out GPU capacity on demand. Wire up a model with RunPod and you're cooking with gas.
+I might revisit RunPod someday, but at the time the cost was hard to justify — for me those
+pricey GPUs sit idle most of the time I've got them reserved.
+
+The more cost-effective move was to find someone already selling inference as a
+service — an inference provider, like the big dogs. Enter OpenRouter. This isn't a
+commercial for them, and I've heard some misgivings, but for me, creating an
+OpenRouter account and wiring my Open WebUI up to it instantly expanded my options.
+Now, starting a chat, I had a choice: talk to my local Qwen model, or reach for one
+of the latest and greatest models I couldn't possibly host myself.
+
+Ironically, after all this effort to reproduce something OpenAI and Anthropic give
+away for free, I've found I most often use OpenRouter to push my more demanding
+conversations through "Sonnet Latest" or "Opus Latest." This time I'm actually paying
+for that Sonnet or Opus usage — but each conversation costs pennies, or fractions of
+a penny. Did I actually accomplish anything, then? Hopefully! Because I'm a paying
+customer rather than a free user, Anthropic and OpenAI have pledged not to use these
+conversations to train future models. OpenRouter also has a "Zero Data Retention"
+setting, which I've enabled. "ZDR" means the provider actually running the inference has
+agreed not to store my conversation history for later use (i.e., training). That
+obviously requires a measure of faith on my part, but I'd rather choose those settings
+and try to hold providers to them than blindly chat with a free service that makes no
+privacy claims at all.
+
+The OpenRouter setup with Open WebUI is dead simple. After I created my account and
+loaded it with $20 or $30 of credits, I generated a one-time token that acts as a sort
+of password. Open WebUI lets you specify multiple inference endpoints, so alongside
+the URL for my local services I added OpenRouter's URL and token. Voilà — the next
+time I start a conversation, I can pick one of my locally hosted models or any of the
+huge menu of models on OpenRouter.
+
+== Full mobility: Tailscale
+
+I should at least briefly mention Tailscale, because I couldn't reach this whole
+local-LLM stack without it. Specifically, I need to get at my Open WebUI server from
+both home and while I'm out and about.
+
+I suppose I could make Open WebUI publicly accessible and lean hard on its
+username/password login. But that would mean anyone on the internet could sit around
+all day probing my server and trying to break in. There's a better way: keep all my
+servers private and reach back into my home network through the power of a VPN.
+
+Many years ago I ran an OpenVPN service on my network to connect back to my home
+servers while away. OpenVPN is fine, but it can be fiddly to set up and a little slow
+to use. In more recent years a new open-source VPN protocol called WireGuard emerged.
+Tailscale is a commercial offering — free for personal use — that's built on
+WireGuard and makes the whole thing even easier to stand up. I can personally vouch
+that setting up a Tailscale VPN on my home network was about a thousand times easier
+than configuring OpenVPN back in the day, and traffic is meant to be faster too,
+since it's WireGuard underneath.
+
+So today I have Tailscale running on my FreeBSD machine and on my phone. When I'm off
+my home wifi, I just stay connected to the Tailscale VPN, and the appropriate traffic
+gets routed back to my home server over the encrypted link — so the whole setup stays
+reachable wherever I happen to be.
+
+== Reflections
+
+This is just one implementation, heavily shaped by the current state of open-source
+software (and, since I'm an iPhone user, the iOS apps that go with it). Options will
+come and go. I could see replacing Open WebUI with a different front-end if one were
+compelling enough — though I'd want to bring my chat history along, which would
+probably mean a custom job to bulk-export it from one and bulk-import it into the next.
+The fact that I *can* export and import at all is a strength of open-source software,
+but it's also enough of a hassle that it forms a bit of a moat around whatever I'm
+currently using. Any new front-end would have to be pretty compelling to justify
+migrating everything over. And they keep appearing — even in the short six months since
+I built this, I've seen front-ends I don't remember hearing about in late 2025.
+
+Was the effort worth it? I'm very happy with my setup — though I recognize that a
+desktop plus a capable GPU is a real expense, and not the obvious choice for everyone.
+If you wanted to roll your own the way I did but without the hardware, a lot of this
+could be done cheaply in the cloud. Pick a cloud VM provider, run a smallish Linux VM
+with Open WebUI (or another front-end) on it, and use Tailscale to tie it into your
+tailnet. If you want on-demand "private" inference, a dedicated GPU cloud provider like
+RunPod probably makes the most sense. Otherwise, just wire Open WebUI up to
+OpenRouter — you'll pay per conversation, but the cost is mere pennies. (AI-assisted
+coding is where the bills start to add up fast; plain chatting with models is very
+cheap.) I happen to have a couple of decent-sized computers at home running 24/7, so
+for me it's simply cheaper and more convenient to host everything there.
+
+It took me a while — maybe a couple of weeks — to get comfortable with the terminology,
+the pace of developments (which models are best, how much quantization actually hurts
+quality, and so on), and the administrative savvy to run my own setup. But once I did,
+it was great fun to have this much control. More than anything, this exercise showed me
+that LLMs aren't some mysterious dark art. Running inference on my own machine was a
+genuinely satisfying milestone — and it's within reach for just about anyone, as long
+as you're willing to pick a small enough model.
