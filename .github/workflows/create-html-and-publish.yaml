@@ -14,8 +14,8 @@ jobs:
               asciidoctor -R . -D . -v '**/*.adoc'
 
          - name: deploy to gh-pages
-           uses: peaceiris/actions-gh-pages@v4
-          with:
+            uses: peaceiris/actions-gh-pages@v4
+            with:
              github_token: ${{ secrets.GITHUB_TOKEN }}
              publish_dir: .
              publish_branch: gh-pages
