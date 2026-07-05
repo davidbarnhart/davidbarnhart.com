@@ -548,10 +548,17 @@ don&#8217;t miss the forest for the trees. Here&#8217;s the whole stack on one p
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>  Desktop browser (at home) ─────────────┐
-                                         ├──▶ Open WebUI ──▶ llama-swap ──┐
-  Phone + Conduit (away) ──▶ Tailscale ──┘                                │
-                      model ◀── llama.cpp ◀───────────────────────────────┘</pre>
+<pre>  Desktop (home) ─┐
+                  ├──▶ Open WebUI
+  Phone (away) ───┘        │
+   (via Tailscale)         ▼
+                      llama-swap
+                           │
+                           ▼
+                       llama.cpp
+                           │
+                           ▼
+                         model</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1284,7 +1291,7 @@ as you&#8217;re willing to pick a small enough model.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-07-05 17:48:31 UTC
+Last updated 2026-07-05 17:55:58 UTC
 </div>
 </div>
 </body>
