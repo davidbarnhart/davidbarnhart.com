@@ -5,16 +5,16 @@ jobs:
    create-html:
       runs-on: ubuntu-latest
       steps:
-        - name: checkout code
-          uses: actions/checkout@v2
+         - name: checkout code
+           uses: actions/checkout@v4
 
-        - name: convert to html
-          run: |
-             sudo apt-get install asciidoctor
-             asciidoctor -R . -D . -v '**/*.adoc'
+         - name: convert to html
+           run: |
+              sudo apt-get install asciidoctor
+              asciidoctor -R . -D . -v '**/*.adoc'
 
-        - name: deploy to gh-pages
-          uses: peaceiris/actions-gh-pages@v3
+         - name: deploy to gh-pages
+           uses: peaceiris/actions-gh-pages@v4
           with:
              github_token: ${{ secrets.GITHUB_TOKEN }}
              publish_dir: .
